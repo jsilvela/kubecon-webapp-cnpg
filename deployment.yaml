@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mywebapp
+spec:
+  selector:
+    app: mywebapp
+  ports:
+  - protocol: "TCP"
+    port: 8088
+    targetPort: 5000
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mywebapp
+spec:
+  selector:
+    matchLabels:
+      app: mywebapp
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: mywebapp
+    spec:
+      containers:
+      - name: mywebapp
+        image: myapp
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
