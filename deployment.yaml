@@ -32,3 +32,30 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 5000
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cluster-example-app
+              key: password
+        - name: USER
+          valueFrom:
+            secretKeyRef:
+              name: cluster-example-app
+              key: username
+        - name: DATABASE_URL
+          value: "postgres://$(USER):$(PASSWORD)@cluster-example-app-rw/app?sslmode=require&connect_timeout=2"
+        # - name: SQL_QUERY
+        #   value: "insert into tps.tl(source) values ('hey');"
