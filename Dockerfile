@@ -13,5 +13,5 @@ RUN CGO_ENABLED=0 go build -o /go/bin/app
 FROM gcr.io/distroless/static
 
 COPY --from=build-env /go/bin/app /
-EXPOSE 5000
+EXPOSE 8080
 CMD ["/app"]

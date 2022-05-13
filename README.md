@@ -3,7 +3,6 @@
 https://apoorvtyagi.tech/containerize-your-web-application-and-deploy-it-on-kubernetes
 https://stackoverflow.com/questions/30746888/how-to-know-a-pods-own-ip-address-from-inside-a-container-in-the-pod
 
-
 ## shell
 
 ``` sh
