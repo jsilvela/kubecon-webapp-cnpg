@@ -9,3 +9,11 @@ portfwd:
 
 pgportfwd:
 	kubectl port-forward service/cluster-example-rw  5432:5432
+
+apply-migrations:
+	kubectl port-forward service/cluster-example-rw  5432:5432 &
+	/usr/local/opt/liquibase/liquibase update
+
+rollback-last-migration:
+	kubectl port-forward service/cluster-example-rw  5432:5432 &
+	/usr/local/opt/liquibase/liquibase rollback-count 1

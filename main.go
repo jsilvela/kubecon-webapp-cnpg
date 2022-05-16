@@ -2,14 +2,50 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 	"time"
 
 	_ "github.com/lib/pq"
 )
+
+const bondTableTpl string = `
+<html>
+<h3>Stonks</h3>
+<table>
+{{ range . }}
+	<tr>
+		<td>{{ .Bond }}</td>
+		<td>{{ .Factor }}</td>
+		<td>{{ .Date }}</td>
+	</tr>
+{{ end }}
+</table>
+</html>
+`
+
+const indexPage string = `
+<html>
+<h3>Hello</h3>
+
+<ul>
+	<li>Get <a href="/latest">the latest bond values</a></li>
+	<li>Add <a href="/update">random stock values</a></li>
+</ul>
+</html>
+`
+
+// bondState represents the value of a bond at a given time
+type bondState struct {
+	Bond   string
+	Factor float64
+	Date   time.Time
+}
 
 func main() {
 	podName := os.Getenv("MY_POD_NAME")
@@ -21,23 +57,44 @@ func main() {
 	pgService := "cluster-example-rw"
 
 	port := 8080
+
+	var inside bool
+	flag.BoolVar(&inside, "inside", false, "run webapp inside kind?")
+	flag.Parse()
+
+	var dbConnString string
+	if inside {
+		dbConnString = fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require",
+			pgUser, pgPass, pgService)
+	} else {
+		dbConnString = fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require",
+			pgUser, pgPass, "localhost")
+	}
+
+	bondTable, err := template.New("table").Parse(bondTableTpl)
+	if err != nil {
+		log.Fatalf("could not parse template: %v", err)
+	}
+
+	// HTTP dispatch table
+
 	// handle route using handler function
-	count := 0
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello! pod: %s/%s ip: %s || %d", podName, podEnv, podIP, count)
-		count++
 		log.Println("request", r.RequestURI, time.Now().UTC().Format(time.RFC3339))
+
+		if r.Header.Get("Accept") == "application/json" {
+			fmt.Fprintf(w, "Hello! pod: %s/%s ip: %s || %s\n%v",
+				podName, podEnv, podIP, time.Now().Format(time.RFC3339), r.Header)
+		} else {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, indexPage)
+		}
 	})
 
-	http.HandleFunc("/db", func(w http.ResponseWriter, r *http.Request) {
-		// postgres://$(USER):$(PASSWORD)@cluster-fast-failover-rw/app?sslmode=require&connect_timeout=2
-		// connStr := "user=app dbname=app sslmode=verify-full"
-
+	http.HandleFunc("/latest", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("request", r.RequestURI, time.Now().UTC().Format(time.RFC3339))
 
-		// connStr := fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require", pgUser, pgPass, pgService)
-		connStr := fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require", pgUser, pgPass, "localhost")
-		db, err := sql.Open("postgres", connStr)
+		db, err := sql.Open("postgres", dbConnString)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -56,7 +113,8 @@ from (
             first_value(factor) over wd as factor
       from factors
       window wd as (partition by bond order by date desc)
-) as latest where rank = 1;
+) as latest where rank = 1
+order by date desc, bond;
 `)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -64,20 +122,15 @@ from (
 		}
 		defer rows.Close()
 
-		fmt.Fprintf(w, "Hello! pod: %s/%s ip: %s || %d", podName, podEnv, podIP, count)
-
+		var bonds []bondState
 		for rows.Next() {
-			var (
-				factor float64
-				bond   string
-				date   time.Time
-			)
-			err = rows.Scan(&bond, &date, &factor)
+			var bondS bondState
+			err = rows.Scan(&bondS.Bond, &bondS.Date, &bondS.Factor)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			fmt.Fprintf(w, "row: %s: %e (%s)", bond, factor, date.Format(time.RFC3339))
+			bonds = append(bonds, bondS)
 		}
 
 		if rErr := rows.Err(); rErr != nil {
@@ -85,7 +138,21 @@ from (
 			return
 		}
 
-		count++
+		if r.Header.Get("Accept") == "application/json" {
+			jsonWriter := json.NewEncoder(w)
+			err = jsonWriter.Encode(bonds)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			w.Header().Set("Content-Type", "text/html")
+			err = bondTable.Execute(w, bonds)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	})
 
 	// listen to port

@@ -8,7 +8,7 @@ create table bonds as
 --rollback DROP TABLE bonds;
 
 --changeset jaime.silvela:2 labels:kubecon-demo
---comment: lets add a bunch of factors
+--comment: lets add a bunch of cool factors. Cool beans!
 create table factors as
     with dates as (
         SELECT generate_series as date
