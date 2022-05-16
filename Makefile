@@ -1,7 +1,7 @@
 dockerbuild: *.go
 	docker build -t myapp .
 
-deploy: dockerbuild
+load: dockerbuild
 	kind load docker-image myapp:latest --name pg-operator-e2e-v1-23-1
 
 portfwd:

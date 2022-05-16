@@ -9,25 +9,24 @@ Developing a webapp using an RDBMS involves quite a bit of setup on developer
 machines. The Database itself is usually installed locally, or using Docker for those
 teams that already have a Docker investment.
 
-The deployments are typically of the most basic type, with one Database running.
-Replication, load tests, RTO measurements etc are left for production. Very often, the
+The deployments are typically of the most basic type, with one Database instance running.
+Replication, load tests, RTO measurements etc., are left for production. Very often, the
 developers have only basic knowledge of SQL, and no experience with DB
 administration and operations.
 
 In this context, there is a large gap between the development environment and the
-production and staging environments. The reduction of this gap was precisely one of
-the tenets of the DevOps movment.
+production and staging environments. It's deploy and pray.
 
 CloudNativePG is a great tool to eliminate the gap between development and
 production.
 Developers can use CloudNativePG to spin up a PostgreSQL database on their
-machine, add read
-replicas, test failover, redirect Read-only traffic to read replicas, test out disaster
-scenarios, scale up and down, etc.
+machine, add read replicas, test out disaster scenarios, scale up and down, etc.
+And then use CloudNativePG to deploy their applications, with a good idea of
+what to expect, and a lot of practice.
 
 ## Why develop with PosgreSQL?
 
-Simply, PostgreSQL is the most advanced Open Source RDBMS  out there. It is also
+PostgreSQL is the most advanced Open Source RDBMS  out there. It is also
 a pleasure to develop code against.
 
 Some great features that will allow you to write streamlined SQL:
@@ -35,8 +34,7 @@ Some great features that will allow you to write streamlined SQL:
 - Common Table Expressions (i.e. `WITH` statements)
 - Windowing functions
 - Grouping Sets
-- Array types
-- Stored procedures, triggers
+- Array types and JSON.
 - **Transactional DDL** (more detail next section)
 - Powerful GIS with PostGIS
 - Transactions (obviously!!)
@@ -47,11 +45,11 @@ A fairly typical scenario when developing a webapp or other kind of application 
 a RDBMS for storage would be:
 
 - Either install PostgreSQL locally, or get a dockerized version and do port forwarding
-- Write the application on bare metal or dockerize it
+- Write the application to execute natively or dockerize it
 - Avoid using the `postgres` superuser in your webapp. Create a custom user with only
   the necessary permissions
-- Use schema migration tools to capture changes in dev, and commit them to your
-  code repo
+- Use schema migration tools to capture DB changes in dev, and commit them to your
+  code repo so your team can update and apply on their DB's
 - Following 12-factor app recommendations, pass the DB credentials as environment
   variables to the application
 
@@ -59,14 +57,19 @@ Schema migration tools are a necessity to have a sane collaboration environment.
 Liquibase or Flybase are well known examples, and there are other tools available
 using different implementation languages. We use liquibase in this post.
 
-Schema migration tools work best when their "Rollback" command works cleanly. PostgreSQL
+Schema migration tools work best when their Rollback/Undo command works
+cleanly. PostgreSQL
 shines here. With its **Transactional DDL**, no cleanup is needed after a Rollback.
-Let's just say there are other databases that can't make that claim.
+Let's just say there are other RDBMS that can't make that claim.
 
 There's nothing to stop you from using CloudNativePG as you would a local or dockerized
 Postgres instance, eventhough it can do much more.
-Let's start with that: \
-In my Kind cluster, I have the simplest possible CloudNativePG cluster, with 1 Pod
+
+Let's start with that:
+
+I have a Kind cluster running on my computer.
+I have installed the CNPG operator, and created the simplest possible CloudNativePG
+cluster, with 1 Pod
 running PostgreSQL 14. By default, a CloudNativePG creates a database called `app`,
 owned by a user called `app`.
 

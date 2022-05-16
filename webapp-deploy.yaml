@@ -20,7 +20,7 @@ spec:
   selector:
     matchLabels:
       app: mywebapp
-  replicas: 1
+  replicas: 3
   template:
     metadata:
       labels:
@@ -55,7 +55,3 @@ spec:
             secretKeyRef:
               name: cluster-example-app
               key: username
-        # - name: DATABASE_URL
-        #   value: "postgres://$(PG_USER):$(PASSWORD)@cluster-example-app-rw/app?sslmode=require&connect_timeout=2"
-        # - name: SQL_QUERY
-        #   value: "insert into tps.tl(source) values ('hey');"

@@ -14,4 +14,4 @@ FROM gcr.io/distroless/static
 
 COPY --from=build-env /go/bin/app /
 EXPOSE 8080
-CMD ["/app"]
+CMD ["/app", "--inside"]

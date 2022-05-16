@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"text/template"
@@ -17,6 +18,7 @@ import (
 const bondTableTpl string = `
 <html>
 <h3>Stonks</h3>
+<h3>from most recently updated</h3>
 <table>
 {{ range . }}
 	<tr>
@@ -75,6 +77,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not parse template: %v", err)
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	// HTTP dispatch table
 
@@ -153,6 +157,51 @@ order by date desc, bond;
 				return
 			}
 		}
+	})
+
+	http.HandleFunc("/update", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("request", r.RequestURI, time.Now().UTC().Format(time.RFC3339))
+
+		db, err := sql.Open("postgres", dbConnString)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		ctx := r.Context()
+
+		if err := db.PingContext(ctx); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		var success bool
+		defer func() {
+			if success {
+				tx.Commit()
+			} else {
+				tx.Rollback()
+			}
+		}()
+
+		for i := 0; i < 5; i++ {
+			n := rand.Intn(50) + 1 // between 1 and 50, like our stocks
+			bond := fmt.Sprintf("bn_%d", n)
+			_, err = tx.Exec(
+				`INSERT INTO factors(bond, date, factor) values ($1, $2, $3)`,
+				bond, time.Now(), rand.Float64())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		success = true
+		w.Write([]byte("done"))
 	})
 
 	// listen to port
