@@ -16,3 +16,7 @@ k config set-context --current --namespace=foo
 kubectl rollout restart deployment/demo
 
 pq: remaining connection slots are reserved for non-replication superuser connections
+
+## app
+
+PG_PASSWORD=S3xBbFUX0pQ1t8VVgYxOqVbDRDufAmdQIi5Q2AnwHx457qREWWEhDuJbIVKNP9mh PG_USER=app go run main.go

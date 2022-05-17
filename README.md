@@ -1,4 +1,28 @@
-# Basic webapp in Go + CNPG - a walk-through
+# Basic webapp in Go + CNPG - a walk-
+
+## demo
+
+Given: local Kind cluster
+
+1. The "normal" web app development game with CloudNativePG
+  Cluster with 1 pod
+  Go executable for the webserver
+  Port forwarding so the Go executable can talk to the DB (because Kind on macOS)
+  Liquibase to run migrations
+  -- show codebase: migration, connection string, SQL used
+  -- show app working
+2. Taking advantage of CloudNativePG
+  Scale cluster up to 3 pods
+  Containerize webserver
+  Load and deploy into Kind
+  Show CNPG services
+  Use `-rw` service to let the webserver pods connect to cluster
+  Load test the update endpoint
+  Kill primary pod
+3. Time permitting
+  Rewrite the webapp so the `/latest` endpoint uses the `-ro` service
+  Repeat load test and killing of primary
+  Talk of Poolers and pgbouncer
 
 https://apoorvtyagi.tech/containerize-your-web-application-and-deploy-it-on-kubernetes
 https://stackoverflow.com/questions/30746888/how-to-know-a-pods-own-ip-address-from-inside-a-container-in-the-pod
@@ -107,7 +131,7 @@ That's all there is to it. I can now open `http://localhost:8080/` in my browser
 
 ``` sh
 kubectl port-forward service/cluster-example-rw  5432:5432
-PG_PASSWORD=xE5CX7zpCr5ccmlBJALvifQRW36mSmN48hEEsuUs0fEhyHEE7GDeV1aCsMEZaeXj PG_USER=app go run main.go
+PG_PASSWORD=S3xBbFUX0pQ1t8VVgYxOqVbDRDufAmdQIi5Q2AnwHx457qREWWEhDuJbIVKNP9mh PG_USER=app go run main.go
 
 /usr/local/opt/liquibase/liquibase rollback-count 1 --changelog-file=example-changelog.sql
 /usr/local/opt/liquibase/liquibase update --changelog-file=example-changelog.sql
