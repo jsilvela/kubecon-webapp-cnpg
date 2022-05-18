@@ -15,15 +15,15 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const bondTableTpl string = `
+const stockTableTpl string = `
 <html>
 <h3>Stonks</h3>
 <h3>from most recently updated</h3>
 <table>
 {{ range . }}
 	<tr>
-		<td>{{ .Bond }}</td>
-		<td>{{ .Factor }}</td>
+		<td>{{ .Stock }}</td>
+		<td>{{ .StockValue }}</td>
 		<td>{{ .Date }}</td>
 	</tr>
 {{ end }}
@@ -33,20 +33,20 @@ const bondTableTpl string = `
 
 const indexPage string = `
 <html>
-<h3>Hello</h3>
+<h3>Hello KubeCon!</h3>
 
 <ul>
-	<li>Get <a href="/latest">the latest bond values</a></li>
+	<li>Get <a href="/latest">the latest stock values</a></li>
 	<li>Add <a href="/update">random stock values</a></li>
 </ul>
 </html>
 `
 
-// bondState represents the value of a bond at a given time
-type bondState struct {
-	Bond   string
-	Factor float64
-	Date   time.Time
+// stockTicker represents the value of a stock at a given time
+type stockTicker struct {
+	Stock      string
+	StockValue float64
+	Date       time.Time
 }
 
 func main() {
@@ -56,7 +56,6 @@ func main() {
 
 	pgUser := os.Getenv("PG_USER")
 	pgPass := os.Getenv("PG_PASSWORD")
-	pgService := "cluster-example-rw"
 
 	port := 8080
 
@@ -67,20 +66,20 @@ func main() {
 	var dbConnString string
 	if inside {
 		dbConnString = fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require",
-			pgUser, pgPass, pgService)
+			pgUser, pgPass, "cluster-example-rw")
 	} else {
 		dbConnString = fmt.Sprintf("postgres://%s:%s@%s/app?sslmode=require",
 			pgUser, pgPass, "localhost")
 	}
 
-	bondTable, err := template.New("table").Parse(bondTableTpl)
+	stockTable, err := template.New("table").Parse(stockTableTpl)
 	if err != nil {
 		log.Fatalf("could not parse template: %v", err)
 	}
 
 	rand.Seed(time.Now().UnixNano())
 
-	// HTTP dispatch table
+	// HTTP ENDPOINTS
 
 	// handle route using handler function
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -110,15 +109,15 @@ func main() {
 		}
 
 		rows, err := db.Query(`
-select bond, date, factor
+select stock, date, stock_value
 from (
-      select bond, rank() over wd as rank,
+      select stock, rank() over wd as rank,
             first_value(date) over wd as date,
-            first_value(factor) over wd as factor
-      from factors
-      window wd as (partition by bond order by date desc)
+            first_value(stock_value) over wd as stock_value
+      from stock_values
+      window wd as (partition by stock order by date desc)
 ) as latest where rank = 1
-order by date desc, bond;
+order by date desc, stock;
 `)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -126,15 +125,15 @@ order by date desc, bond;
 		}
 		defer rows.Close()
 
-		var bonds []bondState
+		var stocks []stockTicker
 		for rows.Next() {
-			var bondS bondState
-			err = rows.Scan(&bondS.Bond, &bondS.Date, &bondS.Factor)
+			var stockT stockTicker
+			err = rows.Scan(&stockT.Stock, &stockT.Date, &stockT.StockValue)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			bonds = append(bonds, bondS)
+			stocks = append(stocks, stockT)
 		}
 
 		if rErr := rows.Err(); rErr != nil {
@@ -144,14 +143,14 @@ order by date desc, bond;
 
 		if r.Header.Get("Accept") == "application/json" {
 			jsonWriter := json.NewEncoder(w)
-			err = jsonWriter.Encode(bonds)
+			err = jsonWriter.Encode(stocks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
 			w.Header().Set("Content-Type", "text/html")
-			err = bondTable.Execute(w, bonds)
+			err = stockTable.Execute(w, stocks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -191,10 +190,10 @@ order by date desc, bond;
 
 		for i := 0; i < 5; i++ {
 			n := rand.Intn(50) + 1 // between 1 and 50, like our stocks
-			bond := fmt.Sprintf("bn_%d", n)
+			stock := fmt.Sprintf("stock_%d", n)
 			_, err = tx.Exec(
-				`INSERT INTO factors(bond, date, factor) values ($1, $2, $3)`,
-				bond, time.Now(), rand.Float64())
+				`INSERT INTO stock_values(stock, date, stock_value) values ($1, $2, $3)`,
+				stock, time.Now(), rand.Float64())
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -205,7 +204,7 @@ order by date desc, bond;
 	})
 
 	// listen to port
-	log.Println("ENV", podName, podEnv, podIP, pgPass, pgService, pgUser)
+	log.Println("ENV", podName, podEnv, podIP, pgPass, "cluster-example-rw", pgUser)
 	log.Printf("running the server, listening on %d\n", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }

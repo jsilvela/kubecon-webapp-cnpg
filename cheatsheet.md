@@ -7,7 +7,7 @@ curl -H "Accept: application/json"  localhost:8080/
 
 hey -H "Accept: application/json" -z 5s  http://localhost:8080/
 
-hey -z 200s -q 1 -c 2  http://localhost:8080/update
+hey -z 100s -q 1 -c 2  http://localhost:8080/update
 
 ## kubernetes
 
@@ -19,4 +19,4 @@ pq: remaining connection slots are reserved for non-replication superuser connec
 
 ## app
 
-PG_PASSWORD=S3xBbFUX0pQ1t8VVgYxOqVbDRDufAmdQIi5Q2AnwHx457qREWWEhDuJbIVKNP9mh PG_USER=app go run main.go
+PG_PASSWORD=KPzgXuDJ8P8FzmlmGO9Y7KgPXF1BszuHKWMuEPtiGhHVxVpiSc76pTD0b2V7cmOD PG_USER=app go run main.go

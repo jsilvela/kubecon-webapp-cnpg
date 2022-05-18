@@ -7,7 +7,7 @@ load: dockerbuild
 portfwd:
 	kubectl port-forward service/mywebapp  8080:8088
 
-pgportfwd:
+dbforward:
 	kubectl port-forward service/cluster-example-rw  5432:5432
 
 apply-migrations:
