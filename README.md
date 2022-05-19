@@ -49,12 +49,14 @@ Show diagram for "Case 2" from the
 
 ### Slide: "The Old Way", but using CloudNativePG
 
-#### Ingredient list, game plan
+#### Ingredient list
 
 1. Basic web application written in Go (aka golang)
 1. Kubernetes cluster (in this case KinD running on macOS)
 1. The CloudNativePG operator installed on KinD
 1. Schema migration tool: Liquibase
+
+#### game plan
 
 1. Create the simplest CloudNativePG cluster
 1. Start with an empty PostgreSQL DB
@@ -72,11 +74,13 @@ Take opportunity to show the web page for cnpg and the documentation link.
 
 ### Slide: Leveraging CloudNativePF - cooking with fire
 
-#### Ingredient list, game plan
+#### Ingredient list
 
 1. Let’s Dockerize our webapp and load it into our KinD cluster
 1. Make a deployment and a loadBalancer for our webapp
 1. The webapp should now hit the -rw (cluster-example-rw) Service
+
+#### game plan
 
 1. Let’s scale our CloudNativePG cluster to 3 instances
 1. Close the running webapp
