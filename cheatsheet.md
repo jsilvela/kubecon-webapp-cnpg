@@ -2,21 +2,20 @@
 
 ## requesting and load generating
 
-curl localhost:8080/
-curl -H "Accept: application/json"  localhost:8080/
-
-hey -H "Accept: application/json" -z 5s  http://localhost:8080/
+curl localhost:8080/update
 
 hey -z 100s -q 1 -c 2  http://localhost:8080/update
 
 ## kubernetes
 
-k config set-context --current --namespace=foo
+kubectl rollout restart deployment mywebapp
 
-kubectl rollout restart deployment/demo
+## getting the DB credentials to hit ouside K8s
 
-pq: remaining connection slots are reserved for non-replication superuser connections
+1. kubectl get secret cluster-example-app -o yaml
+1. copy the `password` in the  YAML
+1. echo copiedSecret | base64 --decode | pbcopy
 
 ## app
 
-PG_PASSWORD=KPzgXuDJ8P8FzmlmGO9Y7KgPXF1BszuHKWMuEPtiGhHVxVpiSc76pTD0b2V7cmOD PG_USER=app go run main.go
+PG_PASSWORD=***** PG_USER=app go run main.go

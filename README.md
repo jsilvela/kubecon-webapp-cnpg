@@ -1,164 +1,97 @@
-# Basic webapp in Go + CNPG - a walk-
+# Webapp development with CloudNativePG
 
-## demo
+This repo has support code for a Virtual Office Hours demo given at the
+2022 Kubecon Valencia, on 2022-05-18 by me (Jaime).
 
-Given: local Kind cluster
+Contains:
 
-1. The "normal" web app development game with CloudNativePG
-  Cluster with 1 pod
-  Go executable for the webserver
-  Port forwarding so the Go executable can talk to the DB (because Kind on macOS)
-  Liquibase to run migrations
-  -- show codebase: migration, connection string, SQL used
-  -- show app working
-2. Taking advantage of CloudNativePG
-  Scale cluster up to 3 pods
-  Containerize webserver
-  Load and deploy into Kind
-  Show CNPG services
-  Use `-rw` service to let the webserver pods connect to cluster
-  Load test the update endpoint
-  Kill primary pod
-3. Time permitting
-  Rewrite the webapp so the `/latest` endpoint uses the `-ro` service
-  Repeat load test and killing of primary
-  Talk of Poolers and pgbouncer
+- Liquibase config and initial migration
+- Webapp in Go
+- Makefile and cheat-sheet (to aid this poor typist)
+- Dockerfile and K8s YAML's for the webapp
 
-https://apoorvtyagi.tech/containerize-your-web-application-and-deploy-it-on-kubernetes
-https://stackoverflow.com/questions/30746888/how-to-know-a-pods-own-ip-address-from-inside-a-container-in-the-pod
+Assumed to be installed on demo machine:
 
-## Introduction
+- KinD cluster
+- CloudNativePG operator
+- Liquibase
 
-Developing a webapp using an RDBMS involves quite a bit of setup on developer
-machines. The Database itself is usually installed locally, or using Docker for those
-teams that already have a Docker investment.
+Uses the `cluster-example.yaml` sample in `docs/src/samples`.
 
-The deployments are typically of the most basic type, with one Database instance running.
-Replication, load tests, RTO measurements etc., are left for production. Very often, the
-developers have only basic knowledge of SQL, and no experience with DB
-administration and operations.
+## summary
 
-In this context, there is a large gap between the development environment and the
-production and staging environments. It's deploy and pray.
+The purpose of the demo is to show CloudNativePG is a great tool to develop
+web applications on dev machines and opens up possibilities to do all sorts of
+things before putting in prod.
 
-CloudNativePG is a great tool to eliminate the gap between development and
-production.
-Developers can use CloudNativePG to spin up a PostgreSQL database on their
-machine, add read replicas, test out disaster scenarios, scale up and down, etc.
-And then use CloudNativePG to deploy their applications, with a good idea of
-what to expect, and a lot of practice.
+We try to show a viable workflow using Liquibase for schema migrations, 
+and a webapp written in Go using only the standard
+`net/http`, `database/sql` and `lib/pq` packages.
 
-## Why develop with PosgreSQL?
+Two halves to the demo:
 
-PostgreSQL is the most advanced Open Source RDBMS  out there. It is also
-a pleasure to develop code against.
+1. "Average" or "old-style" approach: postgres installed locally, possibly even
+  dockerized + webapp developed locally or perhaps dockerized.
+  We ape this by installing a 1-pod cluster using the `cluster-example.yaml` sample
+  with 1 replica instead of 3.
+  We run the webapp outside of KinD and hit `localhost:5432` from it.
 
-Some great features that will allow you to write streamlined SQL:
+2. Better way: we dockerize the webapp, push to the KinD nodes, create a
+  deployment and a service for it. We hit the `cluster-example-rw` service.
+  We show the possibilities that open up.
 
-- Common Table Expressions (i.e. `WITH` statements)
-- Windowing functions
-- Grouping Sets
-- Array types and JSON.
-- **Transactional DDL** (more detail next section)
-- Powerful GIS with PostGIS
-- Transactions (obviously!!)
+## Demo and slides
 
-## Basic development cycle for a webapp with a Database
+### Slide: Using CloudNativePG from outside Kubernetes
 
-A fairly typical scenario when developing a webapp or other kind of application with
-a RDBMS for storage would be:
+Show diagram for "Case 2" from the
+[cnpg docs](https://cloudnative-pg.io/documentation/1.15.0/use_cases/)
 
-- Either install PostgreSQL locally, or get a dockerized version and do port forwarding
-- Write the application to execute natively or dockerize it
-- Avoid using the `postgres` superuser in your webapp. Create a custom user with only
-  the necessary permissions
-- Use schema migration tools to capture DB changes in dev, and commit them to your
-  code repo so your team can update and apply on their DB's
-- Following 12-factor app recommendations, pass the DB credentials as environment
-  variables to the application
+### Slide: "The Old Way", but using CloudNativePG
 
-Schema migration tools are a necessity to have a sane collaboration environment.
-Liquibase or Flybase are well known examples, and there are other tools available
-using different implementation languages. We use liquibase in this post.
+#### Ingredient list, game plan
 
-Schema migration tools work best when their Rollback/Undo command works
-cleanly. PostgreSQL
-shines here. With its **Transactional DDL**, no cleanup is needed after a Rollback.
-Let's just say there are other RDBMS that can't make that claim.
+1. Basic web application written in Go (aka golang)
+1. Kubernetes cluster (in this case KinD running on macOS)
+1. The CloudNativePG operator installed on KinD
+1. Schema migration tool: Liquibase
 
-There's nothing to stop you from using CloudNativePG as you would a local or dockerized
-Postgres instance, eventhough it can do much more.
+1. Create the simplest CloudNativePG cluster
+1. Start with an empty PostgreSQL DB
+1. Get DB connection credentials
+1. Apply migrations
+1. Add port forwarding to expose DB (necessary if running KinD on macOS)
+1. Start the webapp
 
-Let's start with that:
+### Slide: Putting your webapp inside Kubernetes
 
-I have a Kind cluster running on my computer.
-I have installed the CNPG operator, and created the simplest possible CloudNativePG
-cluster, with 1 Pod
-running PostgreSQL 14. By default, a CloudNativePG creates a database called `app`,
-owned by a user called `app`.
+Show first diagram for "Case 1" from the
+[cnpg docs](https://cloudnative-pg.io/documentation/1.15.0/use_cases/)
 
-Let's write a basic (very basic) webapp in Go.
-Using the [lib/pq](https://pkg.go.dev/github.com/lib/pq) library, we're going to
-use the following connection string:
+Take opportunity to show the web page for cnpg and the documentation link.
 
+### Slide: Leveraging CloudNativePF - cooking with fire
 
-k config set-context --current --namespace=foo
+#### Ingredient list, game plan
 
-k rollout deployment
+1. Let’s Dockerize our webapp and load it into our KinD cluster
+1. Make a deployment and a loadBalancer for our webapp
+1. The webapp should now hit the -rw (cluster-example-rw) Service
 
-punnett square
+1. Let’s scale our CloudNativePG cluster to 3 instances
+1. Close the running webapp
+1. Deploy the webapp  (show Dockerfile and K8s YAML)
+1. Let’s add a watch on the cluster. Let’s put some load on it
+1. Let’s kill the primary!!
+1. (with enough time) - Have a look around in the cloudnative-pg repo
 
+## Slide: Reflections and questions
 
-``` none
-"postgres://<user>:<password>@localhost/app?sslmode=require"
-```
+Talk about how once we start leveraging CloudNativePG, we enable developers
+to do experiments that require DBA skills. And we allow them to develop locally
+with a DB much more similar to what production will look like.
+When they deal with prod issues on their DB, those developers will have gained
+hand-on experience already.
 
-Our app is so simple it's in just one file: `main.go`
-We can run it like so:
-
-``` sh
-PG_PASSWORD=<redacted> PG_USER=app go run main.go
-```
-
-The laptop I'm using is a mac, so I need to do port forwarding in order for my Kind
-cluster to open a port in my local network:
-
-``` sh
-kubectl port-forward service/cluster-example-rw  5432:5432
-```
-
-That's all there is to it. I can now open `http://localhost:8080/` in my browser.
-
-``` sh
-kubectl port-forward service/cluster-example-rw  5432:5432
-PG_PASSWORD=S3xBbFUX0pQ1t8VVgYxOqVbDRDufAmdQIi5Q2AnwHx457qREWWEhDuJbIVKNP9mh PG_USER=app go run main.go
-
-/usr/local/opt/liquibase/liquibase rollback-count 1 --changelog-file=example-changelog.sql
-/usr/local/opt/liquibase/liquibase update --changelog-file=example-changelog.sql
-```
-
-## shell
-
-``` sh
-go run main.go
-```
-
-## docker
-
-``` sh
-docker run -dp 5000:5000 myapp
-docker build -t myapp .
-```
-
-## kind
-
-``` sh
-k apply -f deployment.yaml 
-docker images
-kind load docker-image myapp:latest --name pg-operator-e2e-v1-23-1
-kubectl port-forward deployment/mywebapp  8080:5000 -n demo
-kubectl port-forward service/mywebapp  8080:8088 -n demo
-```
-
-Let's run a load generator:
-hey -H "Accept: application/json" -z 5s  http://localhost:8080/
+And bridging the gap betwenn dev and prod is one of the tenets of the DevOps
+movement.
