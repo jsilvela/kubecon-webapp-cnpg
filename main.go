@@ -17,8 +17,8 @@ import (
 
 const stockTableTpl string = `
 <html>
-<h3>Stonks</h3>
-<h3>from most recently updated</h3>
+<h3>Stonks!</h3>
+<h4>from most recently updated</h4>
 <table>
 {{ range . }}
 	<tr>
